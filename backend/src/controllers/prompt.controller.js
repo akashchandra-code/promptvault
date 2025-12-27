@@ -27,13 +27,49 @@ async function createPrompt(req, res) {
 }
 
 async function getAllPrompts(req, res) {
-    try {
-        const prompts = await promptModel.find({ type: 'public' });
-        res.status(200).json(prompts);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  try {
+    const { search = "", page = 1, limit = 6 } = req.query;
+
+    const pageNumber = parseInt(page);
+    const pageSize = parseInt(limit);
+    const skip = (pageNumber - 1) * pageSize;
+
+    // 🔍 Search condition
+    const searchQuery = {
+      type: "public",
+      $or: [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { tags: { $in: [new RegExp(search, "i")] } }
+      ]
+    };
+
+    // Count total documents
+    const totalPrompts = await promptModel.countDocuments(searchQuery);
+
+    // Fetch paginated data
+    const prompts = await promptModel
+      .find(searchQuery)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize);
+
+    res.status(200).json({
+      success: true,
+      data: prompts,
+      pagination: {
+        totalPrompts,
+        currentPage: pageNumber,
+        totalPages: Math.ceil(totalPrompts / pageSize),
+        pageSize
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 }
+
 
 async function getMyPrompts(req, res) {
     const ownerId = req.user.id;
