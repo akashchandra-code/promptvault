@@ -39,14 +39,29 @@ async function registerUser(req, res) {
 }
 //login user
 async function loginUser(req, res) {
-    const { username,email, password } = req.body;
-    const user = await userModel.findOne({
-        $or: [{ email }, { username }]
-    }).select('+password');
-    if(!user) {
-        return res.status(401).json({ message: 'Invalid credentials' });
+    console.log("Login attempt received");
+  try {
+    const { identifier, password } = req.body;
+
+    if (!identifier || !password) {
+      return res.status(400).json({
+        message: "Please provide username/email and password",
+      });
     }
-    const isMatch = await bcrypt.compare(password, user.password);
+
+    const isEmail =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
+    // Find user by email OR username
+    const user = await userModel.findOne(
+      isEmail ? { email: identifier } : { username: identifier }
+    ).select("+password");
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+     const isMatch = await bcrypt.compare(password, user.password);
     if(!isMatch) {
         return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -64,9 +79,13 @@ async function loginUser(req, res) {
             name: user.name,
             email: user.email
         }
-     });
+        });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Login error:", error);
+  }
+};
 
-}
 
 //get current user
 async function getCurrentUser(req, res) {
