@@ -16,7 +16,7 @@ app.use(cookieParser());
 /* -------------------- CORS -------------------- */
 app.use(
   cors({
-    origin: "http://localhost:4000",
+    origin: "https://promptvault-g746.onrender.com",
     credentials: true,
   })
 );
